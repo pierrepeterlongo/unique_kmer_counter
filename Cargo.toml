@@ -1,0 +1,11 @@
+[package]
+name = "unique_kmer_counter"
+version = "0.1.1"
+edition = "2021"
+
+authors = [
+	"Pierre Peterlongo <pierre.peterlongo@inria.fr>",
+	]
+
+[dependencies]
+flate2 = "1.0"
