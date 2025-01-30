@@ -13,13 +13,22 @@ This extremely simple tool counts the exact number of unique k-mers from a (mult
 - compile: `cd unique_kmer_counter && RUSTFLAGS="-C target-cpu=native" cargo install --path .`
 
 # Usage 
-`unique_kmer_counter <k> <input_file>`
+```
+Usage: unique_kmer_counter [OPTIONS] --kmer-size <K> --input-file <fasta_file>
+
+Options:
+  -k, --kmer-size <K>            Sets the k-mer size
+  -f, --input-file <fasta_file>  Sets the input FASTA file
+  -r, --reserve <RESERVE>        Sets the initial reserve size for the HashSet [default: 3000000000]
+  -h, --help                     Print help
+  -V, --version                  Print version
+```
 
 # (big) Example
 - Get the hg38 human genome: 
   - `wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz`
 - Run (requires 32G of RAM):
-  - `unique_kmer_counter 27 hg38.fa.gz`
+  - `unique_kmer_counter -f hg38.fa.gz -k 27`
 - The program outputs intermediate results and ends with 
   ```
   Total nucleotides: 3209286105
@@ -35,6 +44,7 @@ However, I coded it for kmers of length <=32 (coded on 64 bits each) and I reser
 - [ ] Adapt coding to kmer size
 - [ ] Use also fastq[.gz] as input
 - [ ] Print more stats
+- [ ] Parallelize if useful
 
 
 
