@@ -21,14 +21,17 @@ This extremely simple tool counts the exact number of unique k-mers from a (mult
 - Run (requires 32G of RAM):
   - `unique_kmer_counter 27 hg38.fa.gz`
 - The program outputs intermediate results and ends with 
-  - `todo`
+  ```
+  Total nucleotides: 3209286105
+  Number of distinct 27-mers: 2490500607
+  ```
 
 This requires 32G or RAM. 
 
 # TODO and LIMITATIONS
 The program was written in a few minutes. But, as I did not find any equivalent, I'm happy to share it here. 
 However, I coded it for kmers of length <=32 (coded on 64 bits each) and I reserved 3 billions entries in a hash set as I used it for human genomes. 
-- [ ] Check options & use clap
+- [X] Check options & use clap
 - [ ] Adapt coding to kmer size
 - [ ] Use also fastq[.gz] as input
 - [ ] Print more stats

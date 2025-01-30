@@ -9,3 +9,4 @@ authors = [
 
 [dependencies]
 flate2 = "1.0"
+clap = "4"
