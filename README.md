@@ -35,7 +35,7 @@ Options:
   Number of distinct 27-mers: 2490500607
   ```
 
-This requires 32G or RAM. 
+This requires 32G of RAM. 
 
 # TODO and LIMITATIONS
 The program was written in a few minutes. But, as I did not find any equivalent, I'm happy to share it here. 
