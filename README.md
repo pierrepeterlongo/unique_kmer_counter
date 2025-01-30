@@ -39,7 +39,7 @@ This requires 32G or RAM.
 
 # TODO and LIMITATIONS
 The program was written in a few minutes. But, as I did not find any equivalent, I'm happy to share it here. 
-However, I coded it for kmers of length <=32 (coded on 64 bits each) and I reserved 3 billions entries in a hash set as I used it for human genomes. 
+However, I coded it for kmers of length <=32 (coded on 64 bits each). 
 - [X] Check options & use clap
 - [ ] Adapt coding to kmer size
 - [ ] Use also fastq[.gz] as input
