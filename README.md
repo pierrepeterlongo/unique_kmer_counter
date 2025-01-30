@@ -1,9 +1,9 @@
 # unique_kmer_counter
 Count number of unique kmers from fasta or fasta.gz files
 
-This extremely simple tool counts the exact number of unique k-mers from a (multi)-fasta or a (multi)-fasta.gz file contains. 
+This extremely simple tool counts the exact number of unique k-mers from a (multi)-fasta or a (multi)-fasta.gz file. 
 
-- Only kmers on the A,C,G,T alphabet are counted. Lowercase letters (a,c,g,t) are considered as (A,C,G,T).
+- Only kmers on the (A,C,G,T) alphabet are counted. Lowercase letters (a,c,g,t) are considered as (A,C,G,T).
 - Only kmers of size <= 32 are counted
 - No canonicalisation
 - No differentiation between sequences. If the input file contains more than a sequence (reads, chromosomes) they are all considered together, but not concatenated (no creation of alien kmers)
