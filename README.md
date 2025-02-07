@@ -8,6 +8,8 @@ This extremely simple tool counts the exact number of unique k-mers from a (mult
 - No canonicalisation
 - No differentiation between sequences. If the input file contains more than a sequence (reads, chromosomes) they are all considered together, but not concatenated (no creation of alien kmers)
 
+It may be useful when resources are limited, as this tool uses zero temporary disk, and simply uses a `set` for storing kmers, themselves stored using 2 bits per nucleotide.
+
 # Install
 - clone: `git clone https://github.com/pierrepeterlongo/unique_kmer_counter`
 - compile: `cd unique_kmer_counter && RUSTFLAGS="-C target-cpu=native" cargo install --path .`
