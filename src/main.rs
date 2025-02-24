@@ -40,24 +40,31 @@ fn get_reader(filename: &str) -> io::Result<Box<dyn BufRead>> {
     }
 }
 
-fn count_kmers_and_nucleotides(filename: &str, k: usize, reserve_size: usize) -> io::Result<(usize, usize)> {
+fn count_kmers_and_nucleotides(filename: &str, k: usize, reserve_size: usize) -> io::Result<(usize, usize, usize, usize)> {
     let reader = get_reader(filename)?;
     let mut kmers = HashSet::new();
     kmers.reserve(reserve_size); 
     let mut sequence = Vec::new();
     let mut total_nucleotides = 0;
     let mut progress_counter = 0;
+    let mut nb_total_kmers = 0;
+    let mut nb_valid_kmers = 0;
 
     let progress_interval = 10_000_000; // Report every 1M nucleotides
 
     for line in reader.lines() {
         let line = line?;
         if line.starts_with('>') {
+            if sequence.len() !=0 {
+                nb_total_kmers += sequence.len() - k + 1;
+            }
+            
             // Process previous sequence if any
             for window in sequence.windows(k) {
                 if !window.contains(&b'N') {
                     if let Some(compact_kmer) = kmer_to_u64(window) {
                         kmers.insert(compact_kmer);
+                        nb_valid_kmers += 1;
                     }
                 }
             }
@@ -79,15 +86,19 @@ fn count_kmers_and_nucleotides(filename: &str, k: usize, reserve_size: usize) ->
     }
     
     // Process the last sequence
+    if sequence.len() !=0 {
+        nb_total_kmers += sequence.len() - k + 1;
+    }
     for window in sequence.windows(k) {
         if !window.contains(&b'N') {
             if let Some(compact_kmer) = kmer_to_u64(window) {
                 kmers.insert(compact_kmer);
+                nb_valid_kmers += 1;
             }
         }
     }
 
-    Ok((kmers.len(), total_nucleotides))
+    Ok((kmers.len(), total_nucleotides, nb_total_kmers, nb_valid_kmers))
 }
 
 fn main() {
@@ -139,8 +150,10 @@ fn main() {
     });
 
     match count_kmers_and_nucleotides(fasta_file, k, reserve_size) {
-        Ok((kmer_count, nuc_count)) => {
+        Ok((kmer_count, nuc_count, nb_total_kmers, nb_valid_kmers)) => {
             println!("Total nucleotides: {}", nuc_count);
+            println!("Total k-mers: {}", nb_total_kmers);
+            println!("Valid k-mers: {}", nb_valid_kmers);
             println!("Number of distinct {}-mers: {}", k, kmer_count);
         },
         Err(e) => {
