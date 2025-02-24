@@ -1,0 +1,6 @@
+0.1.1: original version 
+0.2.0: 
+    - added support for gzipped input files, 
+    - added parallelization
+    - added the counting of total number of kmers, and of valid kmers
+    - added the only_count option that doest not count the number of unique kmers

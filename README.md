@@ -21,7 +21,9 @@ Usage: unique_kmer_counter [OPTIONS] --kmer-size <K> --input-file <fasta_file>
 Options:
   -k, --kmer-size <K>            Sets the k-mer size
   -f, --input-file <fasta_file>  Sets the input FASTA file
-  -r, --reserve <RESERVE>        Sets the initial reserve size for the HashSet [default: 3000000000]
+  -r, --reserve <RESERVE>        Sets the initial reserve size for the HashSet. Useless with the only_count option [default: 3000000000]
+  -c, --only-count               Only count the number of kmers and nucleotides (no unique kmers)
+  -t, --max-threads <THREADS>    Limits the maximum number of threads [default: 0]
   -h, --help                     Print help
   -V, --version                  Print version
 ```
@@ -44,9 +46,9 @@ The program was written in a few minutes. But, as I did not find any equivalent,
 However, I coded it for kmers of length <=32 (coded on 64 bits each). 
 - [X] Check options & use clap
 - [ ] Adapt coding to kmer size
-- [ ] Use also fastq[.gz] as input
-- [ ] Print more stats
-- [ ] Parallelize if useful
+- [X] Use also fastq[.gz] as input
+- [X] Print more stats
+- [X] Parallelize if useful
 
 
 
