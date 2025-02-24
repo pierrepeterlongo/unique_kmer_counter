@@ -10,3 +10,5 @@ authors = [
 [dependencies]
 flate2 = "1.0"
 clap = "4"
+dashmap = "6"
+rayon = "1.5"
