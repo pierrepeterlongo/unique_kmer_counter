@@ -1,10 +1,8 @@
 use clap::{Arg, Command};
 use dashmap::DashSet;
-use flate2::read::GzDecoder;
+use fxread::initialize_reader;
 use rayon::ThreadPoolBuilder;
-use std::fs::File;
-use std::io::{self, BufRead, BufReader};
-use std::path::Path;
+use std::io::{self};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::process;
 use std::sync::Arc;
@@ -31,58 +29,36 @@ fn kmer_to_u64(sequence: &[u8]) -> Option<u64> {
     Some(encoded)
 }
 
-fn get_reader(filename: &str) -> io::Result<Box<dyn BufRead>> {
-    let path = Path::new(filename);
-    let file = File::open(path)?;
+// fn get_reader(filename: &str) -> io::Result<Box<dyn BufRead>> {
+//     let path = Path::new(filename);
+//     let file = File::open(path)?;
 
-    if path.extension().and_then(|s| s.to_str()) == Some("gz") {
-        Ok(Box::new(BufReader::new(GzDecoder::new(file))))
-    } else {
-        Ok(Box::new(BufReader::new(file)))
-    }
-}
+//     if path.extension().and_then(|s| s.to_str()) == Some("gz") {
+//         Ok(Box::new(BufReader::new(GzDecoder::new(file))))
+//     } else {
+//         Ok(Box::new(BufReader::new(file)))
+//     }
+// }
 
-fn process_fasta_parallel(filename: &str, k: usize, reserve_size: usize) -> io::Result<(usize, usize, usize, usize)> {
-    let reader = get_reader(filename)?;
-    let lines: Vec<String> = reader.lines().filter_map(Result::ok).collect();
+fn process_fasta_parallel(filename: &str, k: usize, reserve_size: usize, max_threads: usize) -> io::Result<(usize, usize, usize, usize)> {
+    ThreadPoolBuilder::new().num_threads(max_threads).build_global().unwrap();
+    let reader = initialize_reader(&filename).unwrap();
 
     let kmers = Arc::new(DashSet::with_capacity(reserve_size));
     let total_nucleotides = Arc::new(AtomicUsize::new(0));
     let nb_total_kmers = Arc::new(AtomicUsize::new(0));
     let nb_valid_kmers = Arc::new(AtomicUsize::new(0));
+    
+    reader.for_each(|record|{ 
+            let seq = record.seq();
 
-    lines.rchunks(1000).for_each(|chunk| {
-        let local_kmers = DashSet::new();
-        let mut sequence = Vec::new();
-        let mut local_nuc_count = 0;
-        let mut local_total_kmers = 0;
-        let mut local_valid_kmers = 0;
+            let local_kmers = DashSet::new();
+            let mut local_valid_kmers = 0;
 
-        for line in chunk {
-            if line.starts_with('>') {
-                if !sequence.is_empty() {
-                    local_total_kmers += sequence.len().saturating_sub(k) + 1;
-                    for window in sequence.windows(k) {
-                        if !window.contains(&b'N') {
-                            if let Some(compact_kmer) = kmer_to_u64(window) {
-                                local_kmers.insert(compact_kmer);
-                                local_valid_kmers += 1;
-                            }
-                        }
-                    }
-                    sequence.clear();
-                }
-            } else {
-                let clean_line = line.trim().bytes().map(|b| b.to_ascii_uppercase());
-                local_nuc_count += line.trim().len();
-                sequence.extend(clean_line);
-            }
-        }
-
-        // Process last sequence
-        if !sequence.is_empty() {
-            local_total_kmers += sequence.len().saturating_sub(k) + 1;
-            for window in sequence.windows(k) {
+            nb_total_kmers.fetch_add(seq.len().saturating_sub(k) + 1, Ordering::Relaxed);
+            total_nucleotides.fetch_add(seq.len(), Ordering::Relaxed);
+            
+            for window in seq.windows(k) {
                 if !window.contains(&b'N') {
                     if let Some(compact_kmer) = kmer_to_u64(window) {
                         local_kmers.insert(compact_kmer);
@@ -90,17 +66,12 @@ fn process_fasta_parallel(filename: &str, k: usize, reserve_size: usize) -> io::
                     }
                 }
             }
-        }
 
-        // Merge results into shared atomic values
-        total_nucleotides.fetch_add(local_nuc_count, Ordering::Relaxed);
-        nb_total_kmers.fetch_add(local_total_kmers, Ordering::Relaxed);
-        nb_valid_kmers.fetch_add(local_valid_kmers, Ordering::Relaxed);
-
-        for kmer in local_kmers.iter() {
-            kmers.insert(*kmer);
-        }
-    });
+            nb_valid_kmers.fetch_add(local_valid_kmers, Ordering::Relaxed);
+            for kmer in local_kmers.iter() {
+                kmers.insert(*kmer);
+            }
+        });
 
     Ok((
         kmers.len(),
@@ -112,57 +83,33 @@ fn process_fasta_parallel(filename: &str, k: usize, reserve_size: usize) -> io::
 
 
 
-fn process_fasta_parallel_only_count(filename: &str, k: usize) -> io::Result<(usize, usize, usize)> {
-    let reader = get_reader(filename)?;
-    let lines: Vec<String> = reader.lines().filter_map(Result::ok).collect();
+fn process_fasta_parallel_only_count(filename: &str, k: usize, max_threads: usize) -> io::Result<(usize, usize, usize)> {
+    ThreadPoolBuilder::new().num_threads(max_threads).build_global().unwrap();
+    let reader = initialize_reader(&filename).unwrap();
 
     let total_nucleotides = Arc::new(AtomicUsize::new(0));
     let nb_total_kmers = Arc::new(AtomicUsize::new(0));
     let nb_valid_kmers = Arc::new(AtomicUsize::new(0));
+    
+    reader.for_each(|record|{ 
+            let seq = record.seq();
 
-    lines.rchunks(1000).for_each(|chunk| {
-        let mut sequence = Vec::new();
-        let mut local_nuc_count = 0;
-        let mut local_total_kmers = 0;
-        let mut local_valid_kmers = 0;
+            let mut local_valid_kmers = 0;
 
-        for line in chunk {
-            if line.starts_with('>') {
-                if !sequence.is_empty() {
-                    local_total_kmers += sequence.len().saturating_sub(k) + 1;
-                    for window in sequence.windows(k) {
-                        if !window.contains(&b'N') {
-                            if let Some(_) = kmer_to_u64(window) {
-                                local_valid_kmers += 1;
-                            }
-                        }
-                    }
-                    sequence.clear();
-                }
-            } else {
-                let clean_line = line.trim().bytes().map(|b| b.to_ascii_uppercase());
-                local_nuc_count += line.trim().len();
-                sequence.extend(clean_line);
-            }
-        }
-
-        // Process last sequence
-        if !sequence.is_empty() {
-            local_total_kmers += sequence.len().saturating_sub(k) + 1;
-            for window in sequence.windows(k) {
+            nb_total_kmers.fetch_add(seq.len().saturating_sub(k) + 1, Ordering::Relaxed);
+            total_nucleotides.fetch_add(seq.len(), Ordering::Relaxed);
+            
+            for window in seq.windows(k) {
                 if !window.contains(&b'N') {
                     if let Some(_) = kmer_to_u64(window) {
                         local_valid_kmers += 1;
                     }
                 }
             }
-        }
 
-        // Merge results into shared atomic values
-        total_nucleotides.fetch_add(local_nuc_count, Ordering::Relaxed);
-        nb_total_kmers.fetch_add(local_total_kmers, Ordering::Relaxed);
-        nb_valid_kmers.fetch_add(local_valid_kmers, Ordering::Relaxed);
-    });
+            nb_valid_kmers.fetch_add(local_valid_kmers, Ordering::Relaxed);
+            
+        });
 
     Ok((
         total_nucleotides.load(Ordering::Relaxed),
@@ -255,14 +202,9 @@ fn main() {
         .and_then(|s| s.parse::<usize>().ok())
         .unwrap_or(0);
 
-    if max_threads > 0 {
-        ThreadPoolBuilder::new()
-            .num_threads(max_threads)
-            .build_global()
-            .expect("Failed to set thread limit");
-    }
+
     if matches.get_flag("only_count") {
-        match process_fasta_parallel_only_count(fasta_file, k) {
+        match process_fasta_parallel_only_count(fasta_file, k, max_threads) {
             Ok((nuc_count, nb_total_kmers, nb_valid_kmers)) => {
                 println!("Total nucleotides: {}", nuc_count);
                 println!("Total k-mers: {}", nb_total_kmers);
@@ -276,7 +218,7 @@ fn main() {
         return;
     }
 
-    match process_fasta_parallel(fasta_file, k, reserve_size) {
+    match process_fasta_parallel(fasta_file, k, reserve_size, max_threads) {
         Ok((kmer_count, nuc_count, nb_total_kmers, nb_valid_kmers)) => {
             println!("Total nucleotides: {}", nuc_count);
             println!("Total k-mers: {}", nb_total_kmers);
